@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+/* CSS Variables for Fonts */
+:root {
+  --font-poppins: 'Poppins', sans-serif;
+  --font-inter: 'Inter', sans-serif;
+}
+
+/* Global Resets */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #F5F0E8;
+  color: #1C1C1C;
+  font-family: var(--font-inter), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure images are responsive by default */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Remove default button styles */
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Focus styles for accessibility */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #3B1F0A;
+  outline-offset: 2px;
+}
+
+/* Custom Tailwind utilities */
+@theme {
+  --color-background: #F5F0E8;
+  --color-surface: #FFFFFF;
+  --color-primary: #3B1F0A;
+  --color-primary-hover: #5C3317;
+  --color-secondary: #C8A97E;
+  --color-border: #E2D9CC;
+  --color-text-primary: #1C1C1C;
+  --color-text-muted: #6B6B6B;
+  
+  --font-family-heading: var(--font-poppins), sans-serif;
+  --font-family-body: var(--font-inter), sans-serif;
+  
+  --radius-card: 1rem;
+  
+  --transition-duration-default: 300ms;
+  --transition-timing-function-default: ease-in-out;
+}
