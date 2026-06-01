@@ -147,14 +147,14 @@ The implementation follows a bottom-up approach: infrastructure and shared utili
     - _Requirements: 5.3, 5.4, 5.5_
 
 - [ ] 9. Implement landing page section components
-  - [ ] 9.1 Create Hero section
+  - [x] 9.1 Create Hero section
     - Write `src/components/sections/Hero.tsx` as Server Component
     - Implement full-viewport background image with bg-black/40 overlay
     - Add Framer Motion fade-in animation for headline and sub-headline
     - Implement smooth scroll to #menu on CTA button click
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
   
-  - [ ] 9.2 Create About Us section
+  - [x] 9.2 Create About Us section
     - Write `src/components/sections/About.tsx` as Server Component
     - Display brand story, philosophy, value proposition, and supporting photo
     - Apply Framer Motion whileInView animation
