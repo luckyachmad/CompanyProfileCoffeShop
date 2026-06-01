@@ -57,91 +57,91 @@ The implementation follows a bottom-up approach: infrastructure and shared utili
     - Support MinIO, Cloudflare R2, Backblaze B2, AWS S3
     - _Requirements: 13.5_
   
-  - [ ] 4.4 Implement Google Drive storage adapter
+  - [x] 4.4 Implement Google Drive storage adapter
     - Write `src/lib/storage/gdriveAdapter.ts` using googleapis library
     - Implement service account authentication and public file sharing
     - _Requirements: 13.6_
 
-- [ ] 5. Implement authentication system
-  - [ ] 5.1 Configure NextAuth.js
+- [x] 5. Implement authentication system
+  - [x] 5.1 Configure NextAuth.js
     - Write `src/lib/auth.ts` with NextAuth configuration
     - Implement Credentials provider with bcrypt password verification
     - Configure JWT session strategy and callbacks
     - _Requirements: 11.1, 11.2, 11.6_
   
-  - [ ] 5.2 Create NextAuth API route handler
+  - [x] 5.2 Create NextAuth API route handler
     - Write `src/app/api/auth/[...nextauth]/route.ts` with NextAuth handler
     - _Requirements: 11.1_
   
-  - [ ] 5.3 Implement authentication middleware
+  - [x] 5.3 Implement authentication middleware
     - Write `src/middleware.ts` to protect /admin/* routes
     - Redirect unauthenticated requests to sign-in page
     - _Requirements: 11.4_
 
-- [ ] 6. Implement API route handlers
-  - [ ] 6.1 Create Menu API routes
+- [x] 6. Implement API route handlers
+  - [x] 6.1 Create Menu API routes
     - Write `src/app/api/menu/route.ts` with GET (public) and POST (admin) handlers
     - Implement session verification for POST requests
     - Handle image upload with Sharp WebP conversion and storage adapter integration
     - Use parameterized SQL queries
     - _Requirements: 12.1, 12.2, 12.9_
   
-  - [ ] 6.2 Create Menu Item detail API routes
+  - [x] 6.2 Create Menu Item detail API routes
     - Write `src/app/api/menu/[id]/route.ts` with PUT and DELETE handlers
     - Verify session for both operations
     - Handle image updates and deletions through storage adapter
     - _Requirements: 12.3_
   
-  - [ ] 6.3 Create Categories API routes
+  - [x] 6.3 Create Categories API routes
     - Write `src/app/api/categories/route.ts` with GET (public), POST (admin), and DELETE (admin) handlers
     - _Requirements: 12.7_
   
-  - [ ] 6.4 Create Gallery API routes
+  - [x] 6.4 Create Gallery API routes
     - Write `src/app/api/gallery/route.ts` with GET (public) and POST (admin) handlers
     - Support multi-file upload with Sharp WebP conversion
     - Auto-increment sort_order for new photos
     - _Requirements: 12.4, 12.5_
   
-  - [ ] 6.5 Create Gallery Photo detail API routes
+  - [x] 6.5 Create Gallery Photo detail API routes
     - Write `src/app/api/gallery/[id]/route.ts` with DELETE handler
     - Clean up storage files when deleting photos
     - _Requirements: 12.5_
   
-  - [ ] 6.6 Create Testimonials API routes
+  - [x] 6.6 Create Testimonials API routes
     - Write `src/app/api/testimonials/route.ts` with GET (public), POST (admin), and DELETE (admin) handlers
     - Enforce rating constraint (1-5)
     - _Requirements: 12.6_
   
-  - [ ]* 6.7 Write API error handling tests
+  - [x]* 6.7 Write API error handling tests
     - Test database error responses return HTTP 500 without exposing SQL details
     - Test SQL injection protection with parameterized queries
     - _Requirements: 12.8, 12.9_
 
-- [ ] 7. Checkpoint - Verify API layer
+- [x] 7. Checkpoint - Verify API layer
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Implement shared UI components
-  - [ ] 8.1 Create Button component
+- [x] 8. Implement shared UI components
+  - [x] 8.1 Create Button component
     - Write `src/components/ui/Button.tsx` with primary and secondary variants
     - Apply transition-all duration-300 ease-in-out to all buttons
     - _Requirements: 2.3, 16.6_
   
-  - [ ] 8.2 Create Badge component
+  - [x] 8.2 Create Badge component
     - Write `src/components/ui/Badge.tsx` for Best Seller badges
     - Use bg-secondary, rounded-full styling
     - _Requirements: 4.4_
   
-  - [ ] 8.3 Create Card component
+  - [x] 8.3 Create Card component
     - Write `src/components/ui/Card.tsx` with rounded-2xl, shadow-sm, bg-surface, border-border
     - _Requirements: 4.2, 6.2_
   
-  - [ ] 8.4 Create WhatsAppButton component
+  - [x] 8.4 Create WhatsAppButton component
     - Write `src/components/ui/WhatsAppButton.tsx` with floating and inline variants
     - Read phone number from NEXT_PUBLIC_WHATSAPP_NUMBER env var
     - Implement hover:scale-110 animation for floating variant
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
   
-  - [ ] 8.5 Create Lightbox component
+  - [x] 8.5 Create Lightbox component
     - Write `src/components/ui/Lightbox.tsx` for full-screen image modal
     - Implement close button, Escape key handler, and click-outside-to-close
     - _Requirements: 5.3, 5.4, 5.5_
