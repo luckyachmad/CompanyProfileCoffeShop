@@ -46,6 +46,22 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+/* Apply font-heading to headings */
+h1,
+h2,
+h3 {
+  font-family: var(--font-poppins), sans-serif;
+}
+
+/* Apply font-body to text elements */
+p,
+span,
+label,
+figcaption,
+caption {
+  font-family: var(--font-inter), sans-serif;
+}
+
 /* Custom Tailwind utilities */
 @theme {
   --color-background: #F5F0E8;

@@ -9,15 +9,16 @@ import AboutClient from './AboutClient';
  * - Philosophy statement about coffee craftsmanship and customer experience
  * - Unique value proposition highlighting what sets the shop apart
  * - Supporting photo at 16:9 aspect ratio showcasing the atmosphere
+ * - Uses semantic <section> element for page section structure
  * 
  * This component is a Server Component that renders static content.
  * Animations are delegated to AboutClient.
  * 
- * **Validates: Requirements 3.1, 3.2, 3.3, 3.4**
+ * **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 16.3, 16.5**
  */
 export default function About() {
   return (
-    <section className="bg-background py-20 px-4 md:px-8 lg:px-16">
+    <section id="about" className="bg-background py-20 px-4 md:px-8 lg:px-16">
       <div className="max-w-7xl mx-auto">
         <AboutClient>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -29,7 +30,7 @@ export default function About() {
               </h2>
 
               {/* Brand Story */}
-              <div className="space-y-4">
+              <section className="space-y-4">
                 <h3 className="font-heading text-xl md:text-2xl font-semibold text-primary">
                   Our Story
                 </h3>
@@ -39,10 +40,10 @@ export default function About() {
                   We believe that every cup tells a story — from the farmers who grow our beans 
                   to the baristas who craft each drink with care and precision.
                 </p>
-              </div>
+              </section>
 
               {/* Philosophy Statement */}
-              <div className="space-y-4">
+              <section className="space-y-4">
                 <h3 className="font-heading text-xl md:text-2xl font-semibold text-primary">
                   Our Philosophy
                 </h3>
@@ -53,10 +54,10 @@ export default function About() {
                   with each guest. Coffee is more than a beverage; it's an experience, 
                   a moment of connection, and a daily ritual worth celebrating.
                 </p>
-              </div>
+              </section>
 
               {/* Value Proposition */}
-              <div className="space-y-4">
+              <section className="space-y-4">
                 <h3 className="font-heading text-xl md:text-2xl font-semibold text-primary">
                   What Makes Us Special
                 </h3>
@@ -67,7 +68,7 @@ export default function About() {
                   artisanal coffee craftsmanship with a cozy ambiance, premium ingredients, 
                   and a genuine commitment to sustainability and community engagement.
                 </p>
-              </div>
+              </section>
             </div>
 
             {/* Supporting Photo */}

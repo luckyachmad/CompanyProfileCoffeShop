@@ -3,24 +3,28 @@ version: '3.8'
 services:
   db:
     image: postgres:16-alpine
+    container_name: coffeeshop-db
     env_file: .env
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db/migrations:/docker-entrypoint-initdb.d
-    ports:
-      - "5432:5432"
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - coffeeshop-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coffeeshop_user} -d ${POSTGRES_DB:-coffeeshop}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    restart: unless-stopped
 
   app:
     image: your-dockerhub-username/coffeeshop-app:latest
+    container_name: coffeeshop-app
     env_file: .env
     depends_on:
       db:
@@ -29,8 +33,16 @@ services:
       - "3000:3000"
     volumes:
       - uploads_data:/app/uploads
+    networks:
+      - coffeeshop-network
     restart: unless-stopped
 
 volumes:
   postgres_data:
+    driver: local
   uploads_data:
+    driver: local
+
+networks:
+  coffeeshop-network:
+    driver: bridge

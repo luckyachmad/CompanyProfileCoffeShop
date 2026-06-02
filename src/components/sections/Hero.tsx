@@ -8,15 +8,16 @@ import HeroClient from './HeroClient';
  * - Full-width background image with dark overlay for text contrast
  * - Headline and sub-headline with fade-in animations
  * - Primary CTA button that smooth-scrolls to the menu section
+ * - Uses semantic <header> element for page banner
  * 
  * This component is a Server Component that renders static content.
  * Interactive elements (animations, scroll behavior) are delegated to HeroClient.
  * 
- * **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6**
+ * **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 16.3**
  */
 export default function Hero() {
   return (
-    <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
+    <header className="relative h-screen w-full flex items-center justify-center overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
@@ -33,6 +34,6 @@ export default function Hero() {
 
       {/* Content Container */}
       <HeroClient />
-    </section>
+    </header>
   );
 }

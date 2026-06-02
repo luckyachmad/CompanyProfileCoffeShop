@@ -1,3 +1,20 @@
+/**
+ * WhatsApp Call-to-Action Button Component
+ * 
+ * Client Component providing two variants:
+ * 1. Floating button: Fixed bottom-right, visible on all pages with generic greeting
+ * 2. Inline button: Rendered on menu item cards with pre-filled item title
+ * 
+ * Features:
+ * - Opens WhatsApp chat with pre-filled message in new tab
+ * - Reads phone number from NEXT_PUBLIC_WHATSAPP_NUMBER env var
+ * - Does not render if phone number is not configured
+ * - Floating variant includes aria-label for accessibility
+ * - Smooth hover transitions and scale effects
+ * 
+ * **Validates: Requirements 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 16.5**
+ */
+
 'use client';
 
 import React from 'react';
@@ -68,6 +85,7 @@ const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
       onClick={handleClick}
       className={`bg-green-500 text-white rounded-lg px-4 py-2 font-medium transition-all duration-300 ease-in-out hover:bg-green-600 ${className}`.trim()}
       type="button"
+      aria-label={itemName ? `Order ${itemName} via WhatsApp` : 'Order via WhatsApp'}
     >
       {children || 'Order via WhatsApp'}
     </button>

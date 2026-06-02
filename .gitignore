@@ -44,3 +44,11 @@ uploads/
 *.swp
 *.swo
 *~
+
+# Lighthouse Reports (keep README.md, ignore HTML/JSON reports)
+lighthouse-reports/*.html
+lighthouse-reports/*.json
+.lighthouseci/
+
+# Kiro project files
+.kiro/

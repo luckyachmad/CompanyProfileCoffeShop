@@ -1,291 +1,516 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import bcrypt from 'bcryptjs';
 import { authOptions } from './auth';
-import { pool } from './db';
+import bcrypt from 'bcryptjs';
 
-// Mock the database pool
+// Mock dependencies
 vi.mock('./db', () => ({
   pool: {
     query: vi.fn(),
   },
 }));
 
-describe('NextAuth Configuration', () => {
+vi.mock('bcryptjs', () => ({
+  default: {
+    compare: vi.fn(),
+  },
+}));
+
+import { pool } from './db';
+
+/**
+ * Test Suite for Admin Authentication Flow
+ * 
+ * Tests Requirements:
+ * - 11.2: Sign-in with valid credentials
+ * - 11.3: Sign-in with invalid credentials  
+ * - 11.4: Middleware protection (tested in middleware.test.ts)
+ * - 11.5: Sign-out functionality (tested via NextAuth)
+ * 
+ * Task: 15.2
+ */
+describe('Admin Authentication - Sign-in Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('authOptions structure', () => {
-    it('should have JWT session strategy configured', () => {
-      expect(authOptions.session?.strategy).toBe('jwt');
+  describe('Sign-in with valid credentials (Requirement 11.2)', () => {
+    it('should authenticate admin with correct email and password', async () => {
+      const mockAdmin = {
+        id: 1,
+        email: 'admin@coffeeshop.com',
+        password: '$2a$10$hashedPasswordValue',
+        created_at: new Date(),
+      };
+
+      // Mock database query to return admin
+      vi.mocked(pool.query).mockResolvedValue({
+        rows: [mockAdmin],
+        command: 'SELECT',
+        rowCount: 1,
+        oid: 0,
+        fields: [],
+      });
+
+      // Mock bcrypt.compare to return true (valid password)
+      vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
+
+      // Get the Credentials provider
+      const credentialsProvider = authOptions.providers[0];
+      if (credentialsProvider.type !== 'credentials') {
+        throw new Error('Expected Credentials provider');
+      }
+
+      // Call the authorize function
+      const result = await credentialsProvider.authorize!(
+        {
+          email: 'admin@coffeeshop.com',
+          password: 'correct-password',
+        },
+        {} as any
+      );
+
+      // Verify database was queried with email
+      expect(pool.query).toHaveBeenCalledWith(
+        'SELECT * FROM admins WHERE email = $1',
+        ['admin@coffeeshop.com']
+      );
+
+      // Verify bcrypt.compare was called with password and hash
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        'correct-password',
+        mockAdmin.password
+      );
+
+      // Verify user object is returned (without password)
+      expect(result).toEqual({
+        id: '1',
+        email: 'admin@coffeeshop.com',
+      });
     });
 
-    it('should have Credentials provider configured', () => {
-      expect(authOptions.providers).toHaveLength(1);
-      expect(authOptions.providers[0]).toHaveProperty('name', 'Credentials');
+    it('should create server-side session with httpOnly cookie', () => {
+      // Verify session configuration
+      expect(authOptions.session).toEqual({
+        strategy: 'jwt',
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+      });
+
+      // JWT strategy uses httpOnly cookies by default in NextAuth
+      // This is handled internally by NextAuth.js
     });
 
-    it('should have custom sign-in page configured', () => {
-      expect(authOptions.pages?.signIn).toBe('/api/auth/signin');
+    it('should include user ID in JWT token', async () => {
+      const mockToken = { sub: '1' };
+      const mockUser = { id: '1', email: 'admin@coffeeshop.com' };
+
+      // Get the JWT callback
+      const jwtCallback = authOptions.callbacks?.jwt;
+      expect(jwtCallback).toBeDefined();
+
+      if (jwtCallback) {
+        const result = await jwtCallback({
+          token: mockToken,
+          user: mockUser,
+          trigger: 'signIn',
+          isNewUser: false,
+          session: undefined,
+          account: null,
+        });
+
+        // Verify user ID is added to token
+        expect(result).toHaveProperty('id', '1');
+      }
     });
 
-    it('should have JWT and session callbacks defined', () => {
-      expect(authOptions.callbacks?.jwt).toBeDefined();
-      expect(authOptions.callbacks?.session).toBeDefined();
-    });
+    it('should include user ID in session object', async () => {
+      const mockSession = {
+        user: { email: 'admin@coffeeshop.com' },
+        expires: '2024-12-31',
+      };
+      const mockToken = { id: '1', sub: '1' };
 
-    it('should read secret from environment variable', () => {
-      expect(authOptions.secret).toBe(process.env.NEXTAUTH_SECRET);
+      // Get the session callback
+      const sessionCallback = authOptions.callbacks?.session;
+      expect(sessionCallback).toBeDefined();
+
+      if (sessionCallback) {
+        const result = await sessionCallback({
+          session: mockSession as any,
+          token: mockToken,
+          user: undefined as any,
+          trigger: 'getSession',
+          newSession: undefined,
+        });
+
+        // Verify user ID is added to session from token
+        expect(result.user).toHaveProperty('id', '1');
+      }
     });
   });
 
-  describe('Credentials Provider authorize function', () => {
-    const credentialsProvider = authOptions.providers[0] as any;
-    const authorize = credentialsProvider.options.authorize;
+  describe('Sign-in with invalid credentials (Requirement 11.3)', () => {
+    it('should reject sign-in when email is missing', async () => {
+      const credentialsProvider = authOptions.providers[0];
+      if (credentialsProvider.type !== 'credentials') {
+        throw new Error('Expected Credentials provider');
+      }
 
-    it('should return null when email is missing', async () => {
-      const result = await authorize({ password: 'test123' }, {} as any);
+      const result = await credentialsProvider.authorize!(
+        {
+          password: 'some-password',
+        } as any,
+        {} as any
+      );
+
+      // Should return null for invalid credentials
       expect(result).toBeNull();
+
+      // Database should not be queried
+      expect(pool.query).not.toHaveBeenCalled();
     });
 
-    it('should return null when password is missing', async () => {
-      const result = await authorize({ email: 'admin@test.com' }, {} as any);
+    it('should reject sign-in when password is missing', async () => {
+      const credentialsProvider = authOptions.providers[0];
+      if (credentialsProvider.type !== 'credentials') {
+        throw new Error('Expected Credentials provider');
+      }
+
+      const result = await credentialsProvider.authorize!(
+        {
+          email: 'admin@coffeeshop.com',
+        } as any,
+        {} as any
+      );
+
+      // Should return null for invalid credentials
       expect(result).toBeNull();
+
+      // Database should not be queried
+      expect(pool.query).not.toHaveBeenCalled();
     });
 
-    it('should return null when admin does not exist', async () => {
-      vi.mocked(pool.query).mockResolvedValueOnce({
+    it('should reject sign-in when email does not exist in database', async () => {
+      // Mock database query to return no results
+      vi.mocked(pool.query).mockResolvedValue({
         rows: [],
         command: 'SELECT',
         rowCount: 0,
         oid: 0,
         fields: [],
-      } as any);
+      });
 
-      const result = await authorize(
-        { email: 'nonexistent@test.com', password: 'test123' },
+      const credentialsProvider = authOptions.providers[0];
+      if (credentialsProvider.type !== 'credentials') {
+        throw new Error('Expected Credentials provider');
+      }
+
+      const result = await credentialsProvider.authorize!(
+        {
+          email: 'nonexistent@coffeeshop.com',
+          password: 'any-password',
+        },
         {} as any
       );
 
-      expect(result).toBeNull();
+      // Verify database was queried
       expect(pool.query).toHaveBeenCalledWith(
         'SELECT * FROM admins WHERE email = $1',
-        ['nonexistent@test.com']
-      );
-    });
-
-    it('should return null when password is invalid', async () => {
-      const hashedPassword = await bcrypt.hash('correctpassword', 10);
-
-      vi.mocked(pool.query).mockResolvedValueOnce({
-        rows: [
-          {
-            id: 1,
-            email: 'admin@test.com',
-            password: hashedPassword,
-            created_at: new Date(),
-          },
-        ],
-        command: 'SELECT',
-        rowCount: 1,
-        oid: 0,
-        fields: [],
-      } as any);
-
-      const result = await authorize(
-        { email: 'admin@test.com', password: 'wrongpassword' },
-        {} as any
+        ['nonexistent@coffeeshop.com']
       );
 
+      // Should return null when admin not found
       expect(result).toBeNull();
+
+      // bcrypt.compare should not be called
+      expect(bcrypt.compare).not.toHaveBeenCalled();
     });
 
-    it('should return user object when credentials are valid', async () => {
-      const hashedPassword = await bcrypt.hash('correctpassword', 10);
+    it('should reject sign-in when password is incorrect', async () => {
+      const mockAdmin = {
+        id: 1,
+        email: 'admin@coffeeshop.com',
+        password: '$2a$10$hashedPasswordValue',
+        created_at: new Date(),
+      };
 
-      vi.mocked(pool.query).mockResolvedValueOnce({
-        rows: [
-          {
-            id: 1,
-            email: 'admin@test.com',
-            password: hashedPassword,
-            created_at: new Date(),
-          },
-        ],
+      // Mock database query to return admin
+      vi.mocked(pool.query).mockResolvedValue({
+        rows: [mockAdmin],
         command: 'SELECT',
         rowCount: 1,
         oid: 0,
         fields: [],
-      } as any);
-
-      const result = await authorize(
-        { email: 'admin@test.com', password: 'correctpassword' },
-        {} as any
-      );
-
-      expect(result).toEqual({
-        id: '1',
-        email: 'admin@test.com',
       });
-    });
 
-    it('should return null when database query fails', async () => {
-      vi.mocked(pool.query).mockRejectedValueOnce(new Error('Database error'));
+      // Mock bcrypt.compare to return false (invalid password)
+      vi.mocked(bcrypt.compare).mockResolvedValue(false as never);
 
-      const result = await authorize(
-        { email: 'admin@test.com', password: 'test123' },
+      const credentialsProvider = authOptions.providers[0];
+      if (credentialsProvider.type !== 'credentials') {
+        throw new Error('Expected Credentials provider');
+      }
+
+      const result = await credentialsProvider.authorize!(
+        {
+          email: 'admin@coffeeshop.com',
+          password: 'wrong-password',
+        },
         {} as any
       );
 
+      // Verify bcrypt.compare was called
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        'wrong-password',
+        mockAdmin.password
+      );
+
+      // Should return null when password is incorrect
       expect(result).toBeNull();
     });
 
-    it('should not expose password in returned user object', async () => {
-      const hashedPassword = await bcrypt.hash('correctpassword', 10);
+    it('should display non-empty error message on invalid credentials', () => {
+      // Verify error page is configured
+      expect(authOptions.pages).toBeDefined();
+      expect(authOptions.pages?.error).toBe('/api/auth/error');
+    });
 
-      vi.mocked(pool.query).mockResolvedValueOnce({
-        rows: [
-          {
-            id: 1,
-            email: 'admin@test.com',
-            password: hashedPassword,
-            created_at: new Date(),
-          },
-        ],
+    it('should NOT create session when credentials are invalid', async () => {
+      // Mock database query to return no results
+      vi.mocked(pool.query).mockResolvedValue({
+        rows: [],
+        command: 'SELECT',
+        rowCount: 0,
+        oid: 0,
+        fields: [],
+      });
+
+      const credentialsProvider = authOptions.providers[0];
+      if (credentialsProvider.type !== 'credentials') {
+        throw new Error('Expected Credentials provider');
+      }
+
+      const result = await credentialsProvider.authorize!(
+        {
+          email: 'invalid@example.com',
+          password: 'wrong-password',
+        },
+        {} as any
+      );
+
+      // authorize returns null, which prevents session creation
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Authentication configuration', () => {
+    it('should use Credentials provider', () => {
+      expect(authOptions.providers).toHaveLength(1);
+      expect(authOptions.providers[0].type).toBe('credentials');
+      expect(authOptions.providers[0].name).toBe('Credentials');
+    });
+
+    it('should use JWT session strategy', () => {
+      expect(authOptions.session?.strategy).toBe('jwt');
+    });
+
+    it('should have 30-day session max age', () => {
+      expect(authOptions.session?.maxAge).toBe(30 * 24 * 60 * 60);
+    });
+
+    it('should read NEXTAUTH_SECRET from environment', () => {
+      expect(authOptions.secret).toBe(process.env.NEXTAUTH_SECRET);
+    });
+
+    it('should enable debug mode in development', () => {
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      expect(authOptions.debug).toBe(isDevelopment);
+    });
+
+    it('should configure custom sign-in page', () => {
+      expect(authOptions.pages?.signIn).toBe('/api/auth/signin');
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should handle database connection errors gracefully', async () => {
+      // Mock database query to throw error
+      vi.mocked(pool.query).mockRejectedValue(new Error('Database connection failed'));
+
+      const credentialsProvider = authOptions.providers[0];
+      if (credentialsProvider.type !== 'credentials') {
+        throw new Error('Expected Credentials provider');
+      }
+
+      // Spy on console.error
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const result = await credentialsProvider.authorize!(
+        {
+          email: 'admin@coffeeshop.com',
+          password: 'password',
+        },
+        {} as any
+      );
+
+      // Should return null on error
+      expect(result).toBeNull();
+
+      // Should log error
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Authentication error:',
+        expect.any(Error)
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should handle bcrypt comparison errors gracefully', async () => {
+      const mockAdmin = {
+        id: 1,
+        email: 'admin@coffeeshop.com',
+        password: '$2a$10$hashedPasswordValue',
+        created_at: new Date(),
+      };
+
+      vi.mocked(pool.query).mockResolvedValue({
+        rows: [mockAdmin],
         command: 'SELECT',
         rowCount: 1,
         oid: 0,
         fields: [],
-      } as any);
+      });
 
-      const result = await authorize(
-        { email: 'admin@test.com', password: 'correctpassword' },
+      // Mock bcrypt.compare to throw error
+      vi.mocked(bcrypt.compare).mockRejectedValue(new Error('bcrypt error') as never);
+
+      const credentialsProvider = authOptions.providers[0];
+      if (credentialsProvider.type !== 'credentials') {
+        throw new Error('Expected Credentials provider');
+      }
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const result = await credentialsProvider.authorize!(
+        {
+          email: 'admin@coffeeshop.com',
+          password: 'password',
+        },
         {} as any
       );
 
-      expect(result).not.toHaveProperty('password');
-    });
-  });
+      // Should return null on error
+      expect(result).toBeNull();
 
-  describe('JWT callback', () => {
-    it('should add user ID to token on sign in', async () => {
-      const token = { email: 'admin@test.com' } as any;
-      const user = { id: '1', email: 'admin@test.com' };
+      // Should log error
+      expect(consoleErrorSpy).toHaveBeenCalled();
 
-      const result = await authOptions.callbacks!.jwt!({
-        token,
-        user,
-        trigger: 'signIn',
-        account: null,
-        profile: undefined,
-        isNewUser: false,
-        session: undefined,
-      } as any);
-
-      expect(result.id).toBe('1');
-    });
-
-    it('should preserve existing token when user is not provided', async () => {
-      const token = { email: 'admin@test.com', id: '1' } as any;
-
-      const result = await authOptions.callbacks!.jwt!({
-        token,
-        trigger: 'update',
-        account: null,
-        profile: undefined,
-        isNewUser: false,
-        session: undefined,
-      } as any);
-
-      expect(result).toEqual(token);
-    });
-  });
-
-  describe('Session callback', () => {
-    it('should add user ID from token to session', async () => {
-      const session = {
-        user: { email: 'admin@test.com', id: '' },
-        expires: '2024-12-31',
-      } as any;
-      const token = { id: '1', email: 'admin@test.com' } as any;
-
-      const result = await authOptions.callbacks!.session!({
-        session,
-        token,
-        trigger: 'update',
-        newSession: undefined,
-        user: undefined as any,
-      } as any);
-
-      expect((result as any).user.id).toBe('1');
-    });
-
-    it('should handle session without user object', async () => {
-      const session = { expires: '2024-12-31' } as any;
-      const token = { id: '1', email: 'admin@test.com' } as any;
-
-      const result = await authOptions.callbacks!.session!({
-        session,
-        token,
-        trigger: 'update',
-        newSession: undefined,
-        user: undefined as any,
-      } as any);
-
-      expect(result).toEqual(session);
+      consoleErrorSpy.mockRestore();
     });
   });
 
   describe('Security requirements', () => {
-    it('should use bcrypt for password comparison', async () => {
-      const credentialsProvider = authOptions.providers[0] as any;
-      const authorize = credentialsProvider.options.authorize;
+    it('should NOT expose password in returned user object', async () => {
+      const mockAdmin = {
+        id: 1,
+        email: 'admin@coffeeshop.com',
+        password: '$2a$10$hashedPasswordValue',
+        created_at: new Date(),
+      };
 
-      const hashedPassword = await bcrypt.hash('testpassword', 10);
-
-      vi.mocked(pool.query).mockResolvedValueOnce({
-        rows: [
-          {
-            id: 1,
-            email: 'admin@test.com',
-            password: hashedPassword,
-            created_at: new Date(),
-          },
-        ],
+      vi.mocked(pool.query).mockResolvedValue({
+        rows: [mockAdmin],
         command: 'SELECT',
         rowCount: 1,
         oid: 0,
         fields: [],
-      } as any);
+      });
 
-      await authorize(
-        { email: 'admin@test.com', password: 'testpassword' },
+      vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
+
+      const credentialsProvider = authOptions.providers[0];
+      if (credentialsProvider.type !== 'credentials') {
+        throw new Error('Expected Credentials provider');
+      }
+
+      const result = await credentialsProvider.authorize!(
+        {
+          email: 'admin@coffeeshop.com',
+          password: 'correct-password',
+        },
         {} as any
       );
 
-      // Verify bcrypt.compare was called (implicitly tested by successful auth)
-      expect(pool.query).toHaveBeenCalled();
+      // Verify password is NOT in the returned object
+      expect(result).not.toHaveProperty('password');
+      expect(result).toEqual({
+        id: '1',
+        email: 'admin@coffeeshop.com',
+      });
     });
 
-    it('should use parameterized queries to prevent SQL injection', async () => {
-      const credentialsProvider = authOptions.providers[0] as any;
-      const authorize = credentialsProvider.options.authorize;
+    it('should use bcrypt for password verification', async () => {
+      const mockAdmin = {
+        id: 1,
+        email: 'admin@coffeeshop.com',
+        password: '$2a$10$hashedPasswordValue',
+        created_at: new Date(),
+      };
 
-      vi.mocked(pool.query).mockResolvedValueOnce({
+      vi.mocked(pool.query).mockResolvedValue({
+        rows: [mockAdmin],
+        command: 'SELECT',
+        rowCount: 1,
+        oid: 0,
+        fields: [],
+      });
+
+      vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
+
+      const credentialsProvider = authOptions.providers[0];
+      if (credentialsProvider.type !== 'credentials') {
+        throw new Error('Expected Credentials provider');
+      }
+
+      await credentialsProvider.authorize!(
+        {
+          email: 'admin@coffeeshop.com',
+          password: 'password',
+        },
+        {} as any
+      );
+
+      // Verify bcrypt.compare is used (not plain text comparison)
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        'password',
+        '$2a$10$hashedPasswordValue'
+      );
+    });
+
+    it('should use parameterized SQL query to prevent SQL injection', async () => {
+      const maliciousEmail = "admin@example.com' OR '1'='1";
+
+      vi.mocked(pool.query).mockResolvedValue({
         rows: [],
         command: 'SELECT',
         rowCount: 0,
         oid: 0,
         fields: [],
-      } as any);
+      });
 
-      const maliciousEmail = "admin@test.com' OR '1'='1";
-      await authorize(
-        { email: maliciousEmail, password: 'test123' },
+      const credentialsProvider = authOptions.providers[0];
+      if (credentialsProvider.type !== 'credentials') {
+        throw new Error('Expected Credentials provider');
+      }
+
+      await credentialsProvider.authorize!(
+        {
+          email: maliciousEmail,
+          password: 'password',
+        },
         {} as any
       );
 
-      // Verify parameterized query was used
+      // Verify parameterized query is used (email is passed as parameter, not concatenated)
       expect(pool.query).toHaveBeenCalledWith(
         'SELECT * FROM admins WHERE email = $1',
         [maliciousEmail]

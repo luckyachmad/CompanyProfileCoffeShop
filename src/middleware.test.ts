@@ -1,125 +1,295 @@
-import { describe, it, expect } from 'vitest';
-
 /**
- * Unit tests for authentication middleware
+ * Authentication Middleware Tests
  * 
- * Tests verify:
- * - Middleware configuration is correct
- * - Authorization logic works as expected
- * - Redirect paths are properly configured
+ * Tests middleware protection of /admin/* routes:
+ * - Authenticated requests are allowed to proceed
+ * - Unauthenticated requests are redirected to sign-in
+ * - Middleware only applies to /admin/* routes
  * 
  * Requirements: 11.4
- * 
- * Note: Full integration testing of NextAuth middleware requires a running
- * Next.js server with database connection. These tests verify the logic
- * and configuration that the middleware uses.
+ * Task: 15.2
  */
 
-describe('Authentication Middleware Logic', () => {
-  describe('Authorization Callback Logic', () => {
-    it('should return false when token is null or undefined', () => {
-      // Test the authorization logic used in middleware
-      const authorized = (token: any) => !!token;
-      
-      expect(authorized(null)).toBe(false);
-      expect(authorized(undefined)).toBe(false);
-      expect(authorized('')).toBe(false);
-      expect(authorized(false)).toBe(false);
-      expect(authorized(0)).toBe(false);
-    });
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { NextRequest } from 'next/server';
 
-    it('should return true when token is present', () => {
-      // Test the authorization logic used in middleware
-      const authorized = (token: any) => !!token;
-      
-      expect(authorized({ id: '1', email: 'admin@example.com' })).toBe(true);
-      expect(authorized('valid-token')).toBe(true);
-      expect(authorized({ sub: 'user-id' })).toBe(true);
-      expect(authorized(1)).toBe(true);
-      expect(authorized(true)).toBe(true);
-    });
-  });
+// Mock next-auth/middleware
+const mockWithAuth = vi.fn((middleware, options) => {
+  return async (req: NextRequest) => {
+    // Simulate the withAuth behavior
+    const token = req.headers.get('authorization')?.replace('Bearer ', '');
+    const hasValidToken = options.callbacks.authorized({ token });
 
-  describe('Route Matcher Configuration', () => {
-    it('should use correct matcher pattern for admin routes', () => {
-      // The middleware should protect /admin and all sub-routes
-      const expectedMatcher = '/admin/:path*';
-      
-      // Verify the pattern matches the requirement
-      expect(expectedMatcher).toBe('/admin/:path*');
-      
-      // This pattern will match:
-      // - /admin
-      // - /admin/menu
-      // - /admin/gallery
-      // - /admin/menu/edit/123
-      // etc.
-    });
-
-    it('should not match non-admin routes', () => {
-      const adminPattern = '/admin/:path*';
-      
-      // These routes should NOT be matched by the middleware
-      const publicRoutes = [
-        '/',
-        '/api/menu',
-        '/api/gallery',
-        '/_next/static/chunk.js',
-        '/images/logo.png',
-      ];
-      
-      // The pattern specifically targets /admin/* only
-      publicRoutes.forEach(route => {
-        expect(route.startsWith('/admin')).toBe(false);
-      });
-    });
-  });
-
-  describe('Redirect Configuration', () => {
-    it('should redirect to NextAuth sign-in page', () => {
-      // The middleware should redirect unauthenticated users to this path
-      const signInPath = '/api/auth/signin';
-      
-      expect(signInPath).toBe('/api/auth/signin');
-      expect(signInPath.startsWith('/api/auth/')).toBe(true);
-    });
-  });
-
-  describe('Session Token Verification', () => {
-    it('should verify token exists before allowing access', () => {
-      // Simulate the authorization check
-      const checkAuthorization = (token: any): boolean => {
-        return !!token;
+    if (!hasValidToken) {
+      // Simulate redirect to sign-in page
+      return {
+        status: 307,
+        headers: {
+          Location: options.pages.signIn,
+        },
       };
-      
-      // Test various token scenarios
-      expect(checkAuthorization(null)).toBe(false);
-      expect(checkAuthorization(undefined)).toBe(false);
-      expect(checkAuthorization({ id: '1' })).toBe(true);
+    }
+
+    // Call the middleware function for authenticated requests
+    return middleware(req);
+  };
+});
+
+vi.mock('next-auth/middleware', () => ({
+  default: mockWithAuth,
+  withAuth: mockWithAuth,
+}));
+
+describe('Authentication Middleware (Requirement 11.4)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('Middleware configuration', () => {
+    it('should protect /admin/* routes', async () => {
+      // Import config after mocks are set up
+      const { config } = await import('./middleware');
+
+      expect(config.matcher).toBeDefined();
+      expect(config.matcher).toContain('/admin/:path*');
+    });
+
+    it('should not protect public routes', async () => {
+      const { config } = await import('./middleware');
+
+      // The matcher should only include /admin routes
+      expect(config.matcher).not.toContain('/');
+      expect(config.matcher).not.toContain('/api/*');
+    });
+  });
+
+  describe('Authorization callback', () => {
+    it('should authorize requests with valid token', async () => {
+      // Clear module cache to re-import with fresh mocks
+      vi.resetModules();
+
+      const mockWithAuthLocal = vi.fn((middleware, options) => {
+        // Test the authorization callback directly
+        const isAuthorized = options.callbacks.authorized({ token: 'valid-token' });
+        expect(isAuthorized).toBe(true);
+        return middleware;
+      });
+
+      vi.doMock('next-auth/middleware', () => ({
+        default: mockWithAuthLocal,
+        withAuth: mockWithAuthLocal,
+      }));
+
+      await import('./middleware');
+
+      expect(mockWithAuthLocal).toHaveBeenCalled();
+    });
+
+    it('should reject requests with null token', async () => {
+      vi.resetModules();
+
+      const mockWithAuthLocal = vi.fn((middleware, options) => {
+        const isAuthorized = options.callbacks.authorized({ token: null });
+        expect(isAuthorized).toBe(false);
+        return middleware;
+      });
+
+      vi.doMock('next-auth/middleware', () => ({
+        default: mockWithAuthLocal,
+        withAuth: mockWithAuthLocal,
+      }));
+
+      await import('./middleware');
+
+      expect(mockWithAuthLocal).toHaveBeenCalled();
+    });
+
+    it('should reject requests with undefined token', async () => {
+      vi.resetModules();
+
+      const mockWithAuthLocal = vi.fn((middleware, options) => {
+        const isAuthorized = options.callbacks.authorized({ token: undefined });
+        expect(isAuthorized).toBe(false);
+        return middleware;
+      });
+
+      vi.doMock('next-auth/middleware', () => ({
+        default: mockWithAuthLocal,
+        withAuth: mockWithAuthLocal,
+      }));
+
+      await import('./middleware');
+
+      expect(mockWithAuthLocal).toHaveBeenCalled();
+    });
+  });
+
+  describe('Sign-in redirect configuration', () => {
+    it('should redirect to NextAuth sign-in page', async () => {
+      vi.resetModules();
+
+      const mockWithAuthLocal = vi.fn((middleware, options) => {
+        expect(options.pages.signIn).toBe('/api/auth/signin');
+        return middleware;
+      });
+
+      vi.doMock('next-auth/middleware', () => ({
+        default: mockWithAuthLocal,
+        withAuth: mockWithAuthLocal,
+      }));
+
+      await import('./middleware');
+
+      expect(mockWithAuthLocal).toHaveBeenCalled();
+    });
+  });
+
+  describe('Protected route behavior', () => {
+    it('should allow authenticated access to /admin', async () => {
+      vi.resetModules();
+
+      let authCallbackFn: any;
+      let middlewareFn: any;
+
+      const mockWithAuthLocal = vi.fn((middleware, options) => {
+        authCallbackFn = options.callbacks.authorized;
+        middlewareFn = middleware;
+        return async (req: NextRequest) => {
+          const hasValidToken = authCallbackFn({ token: 'valid-token' });
+          if (hasValidToken) {
+            return middlewareFn(req);
+          }
+          return new Response(null, {
+            status: 307,
+            headers: { Location: options.pages.signIn },
+          });
+        };
+      });
+
+      vi.doMock('next-auth/middleware', () => ({
+        default: mockWithAuthLocal,
+        withAuth: mockWithAuthLocal,
+      }));
+
+      const middlewareModule = await import('./middleware');
+      const middleware = mockWithAuthLocal.mock.results[0]?.value;
+
+      const mockRequest = new NextRequest('http://localhost:3000/admin', {
+        headers: { authorization: 'Bearer valid-token' },
+      });
+
+      const response = await middleware(mockRequest);
+
+      // Should proceed to the protected route (NextResponse.next())
+      expect(response).toBeDefined();
+    });
+
+    it('should redirect unauthenticated access to /admin', async () => {
+      vi.resetModules();
+
+      let authCallbackFn: any;
+
+      const mockWithAuthLocal = vi.fn((middleware, options) => {
+        authCallbackFn = options.callbacks.authorized;
+        return async (req: NextRequest) => {
+          const hasValidToken = authCallbackFn({ token: null });
+          if (!hasValidToken) {
+            return new Response(null, {
+              status: 307,
+              headers: { Location: options.pages.signIn },
+            });
+          }
+          return middleware(req);
+        };
+      });
+
+      vi.doMock('next-auth/middleware', () => ({
+        default: mockWithAuthLocal,
+        withAuth: mockWithAuthLocal,
+      }));
+
+      await import('./middleware');
+      const middleware = mockWithAuthLocal.mock.results[0]?.value;
+
+      const mockRequest = new NextRequest('http://localhost:3000/admin');
+
+      const response = await middleware(mockRequest);
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get('Location')).toBe('/api/auth/signin');
+    });
+
+    it('should allow authenticated access to /admin/menu', async () => {
+      vi.resetModules();
+
+      let authCallbackFn: any;
+      let middlewareFn: any;
+
+      const mockWithAuthLocal = vi.fn((middleware, options) => {
+        authCallbackFn = options.callbacks.authorized;
+        middlewareFn = middleware;
+        return async (req: NextRequest) => {
+          const hasValidToken = authCallbackFn({ token: 'valid-token' });
+          if (hasValidToken) {
+            return middlewareFn(req);
+          }
+          return new Response(null, {
+            status: 307,
+            headers: { Location: options.pages.signIn },
+          });
+        };
+      });
+
+      vi.doMock('next-auth/middleware', () => ({
+        default: mockWithAuthLocal,
+        withAuth: mockWithAuthLocal,
+      }));
+
+      await import('./middleware');
+      const middleware = mockWithAuthLocal.mock.results[0]?.value;
+
+      const mockRequest = new NextRequest('http://localhost:3000/admin/menu', {
+        headers: { authorization: 'Bearer valid-token' },
+      });
+
+      const response = await middleware(mockRequest);
+
+      expect(response).toBeDefined();
+    });
+
+    it('should redirect unauthenticated access to /admin/gallery', async () => {
+      vi.resetModules();
+
+      let authCallbackFn: any;
+
+      const mockWithAuthLocal = vi.fn((middleware, options) => {
+        authCallbackFn = options.callbacks.authorized;
+        return async (req: NextRequest) => {
+          const hasValidToken = authCallbackFn({ token: null });
+          if (!hasValidToken) {
+            return new Response(null, {
+              status: 307,
+              headers: { Location: options.pages.signIn },
+            });
+          }
+          return middleware(req);
+        };
+      });
+
+      vi.doMock('next-auth/middleware', () => ({
+        default: mockWithAuthLocal,
+        withAuth: mockWithAuthLocal,
+      }));
+
+      await import('./middleware');
+      const middleware = mockWithAuthLocal.mock.results[0]?.value;
+
+      const mockRequest = new NextRequest('http://localhost:3000/admin/gallery');
+
+      const response = await middleware(mockRequest);
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get('Location')).toBe('/api/auth/signin');
     });
   });
 });
-
-/**
- * Integration test notes:
- * 
- * These unit tests verify the middleware configuration and logic.
- * For full integration testing:
- * 
- * 1. Start the Next.js dev server
- * 2. Attempt to access /admin without authentication
- * 3. Verify redirect to /api/auth/signin
- * 4. Sign in with valid credentials
- * 5. Verify access to /admin is granted
- * 6. Verify session persists across requests
- * 7. Sign out and verify redirect back to public page
- * 
- * Example manual test:
- * ```bash
- * # Without auth - should redirect
- * curl -I http://localhost:3000/admin
- * 
- * # With auth - should return 200
- * curl -I -H "Cookie: next-auth.session-token=..." http://localhost:3000/admin
- * ```
- */
