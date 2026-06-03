@@ -81,7 +81,7 @@ export const authOptions: NextAuthOptions = {
 
   // Custom pages
   pages: {
-    signIn: '/api/auth/signin',
+    signIn: '/auth/signin',
     error: '/api/auth/error',
   },
 

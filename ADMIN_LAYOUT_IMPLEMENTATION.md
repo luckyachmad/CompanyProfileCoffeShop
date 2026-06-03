@@ -18,8 +18,8 @@
 
 #### 1. Authentication Guard
 - Uses `useSession` hook from `next-auth/react`
-- Checks authentication status on mount
-- Redirects to `/api/auth/signin` if unauthenticated
+- Checks authentication status on mount  
+- Redirects to `/auth/signin` if unauthenticated
 - Shows loading spinner while checking session
 
 #### 2. Sidebar Navigation

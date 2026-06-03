@@ -58,8 +58,8 @@ describe('Admin Authentication Flow', () => {
       expect(authOptions.secret).toBe(process.env.NEXTAUTH_SECRET);
     });
 
-    it('should redirect to NextAuth sign-in page', async () => {
-      expect(authOptions.pages?.signIn).toBe('/api/auth/signin');
+    it('should redirect to custom sign-in page', async () => {
+      expect(authOptions.pages?.signIn).toBe('/auth/signin');
     });
 
     // Note: Full authentication flow testing with database mocking has limitations

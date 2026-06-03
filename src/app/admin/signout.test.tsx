@@ -235,7 +235,7 @@ describe('Sign-Out Functionality (Requirement 11.5)', () => {
 
       // useEffect should trigger router.push
       waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/api/auth/signin');
+        expect(mockPush).toHaveBeenCalledWith('/auth/signin');
       });
     });
 

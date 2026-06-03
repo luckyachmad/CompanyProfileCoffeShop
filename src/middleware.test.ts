@@ -125,11 +125,11 @@ describe('Authentication Middleware (Requirement 11.4)', () => {
   });
 
   describe('Sign-in redirect configuration', () => {
-    it('should redirect to NextAuth sign-in page', async () => {
+    it('should redirect to custom sign-in page', async () => {
       vi.resetModules();
 
       const mockWithAuthLocal = vi.fn((middleware, options) => {
-        expect(options.pages.signIn).toBe('/api/auth/signin');
+        expect(options.pages.signIn).toBe('/auth/signin');
         return middleware;
       });
 
@@ -216,7 +216,7 @@ describe('Authentication Middleware (Requirement 11.4)', () => {
       const response = await middleware(mockRequest);
 
       expect(response.status).toBe(307);
-      expect(response.headers.get('Location')).toBe('/api/auth/signin');
+      expect(response.headers.get('Location')).toBe('/auth/signin');
     });
 
     it('should allow authenticated access to /admin/menu', async () => {
@@ -289,7 +289,7 @@ describe('Authentication Middleware (Requirement 11.4)', () => {
       const response = await middleware(mockRequest);
 
       expect(response.status).toBe(307);
-      expect(response.headers.get('Location')).toBe('/api/auth/signin');
+      expect(response.headers.get('Location')).toBe('/auth/signin');
     });
   });
 });

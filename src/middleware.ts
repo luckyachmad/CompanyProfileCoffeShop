@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
  * - Uses NextAuth's withAuth middleware wrapper
  * - Intercepts requests to /admin/* routes
  * - Verifies session token from httpOnly cookie
- * - Redirects unauthenticated users to /api/auth/signin
+ * - Redirects unauthenticated users to /auth/signin
  * - Allows authenticated users to proceed to admin dashboard
  * 
  * Requirements: 11.4
@@ -35,8 +35,8 @@ export default withAuth(
       },
     },
     pages: {
-      // Redirect unauthenticated users to the NextAuth sign-in page
-      signIn: '/api/auth/signin',
+      // Redirect unauthenticated users to the custom sign-in page
+      signIn: '/auth/signin',
     },
   }
 );

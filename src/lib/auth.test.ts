@@ -327,7 +327,7 @@ describe('Admin Authentication - Sign-in Flow', () => {
     });
 
     it('should configure custom sign-in page', () => {
-      expect(authOptions.pages?.signIn).toBe('/api/auth/signin');
+      expect(authOptions.pages?.signIn).toBe('/auth/signin');
     });
   });
 

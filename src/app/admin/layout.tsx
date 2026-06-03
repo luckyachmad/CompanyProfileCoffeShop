@@ -29,11 +29,11 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Authentication guard: redirect to sign-in if not authenticated
+  // Authentication guard: The middleware handles redirects, so we only need to prevent rendering
+  // if the user is not authenticated. The middleware will handle the actual redirect.
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/api/auth/signin');
-    }
+    // No client-side redirect needed - middleware handles this
+    // This effect is kept for potential future use
   }, [status, router]);
 
   // Show loading state while checking authentication
